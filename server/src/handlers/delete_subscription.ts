@@ -1,9 +1,35 @@
 
+import { db } from '../db';
+import { subscriptionsTable } from '../db/schema';
 import { type DeleteSubscriptionInput } from '../schema';
+import { eq } from 'drizzle-orm';
 
-export async function deleteSubscription(input: DeleteSubscriptionInput): Promise<{ success: boolean }> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is deleting a subscription from the database.
-    // It should validate that the subscription exists, delete it, and return success status.
-    return Promise.resolve({ success: true });
-}
+export const deleteSubscription = async (input: DeleteSubscriptionInput): Promise<{ success: boolean }> => {
+  try {
+    // First, check if the subscription exists
+    const existingSubscription = await db.select()
+      .from(subscriptionsTable)
+      .where(eq(subscriptionsTable.id, input.id))
+      .execute();
+
+    if (existingSubscription.length === 0) {
+      throw new Error(`Subscription with id ${input.id} not found`);
+    }
+
+    // Delete the subscription
+    const result = await db.delete(subscriptionsTable)
+      .where(eq(subscriptionsTable.id, input.id))
+      .returning()
+      .execute();
+
+    // Verify deletion was successful
+    if (result.length === 0) {
+      throw new Error('Failed to delete subscription');
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Subscription deletion failed:', error);
+    throw error;
+  }
+};
